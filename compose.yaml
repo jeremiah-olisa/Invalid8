@@ -1,0 +1,60 @@
+﻿services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: invalid8_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass invalid8_redis_password
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "invalid8_redis_password", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: invalid8_redis_insight
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis_insight_data:/db
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      - REDIS_INSTANCE_NAME=Invalid8_Redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=invalid8_redis_password
+
+  invalid8-webapi:
+    build:
+      context: .
+      dockerfile: samples/Invalid8.Samples.WebApi/Dockerfile
+    container_name: invalid8_webapi
+    ports:
+      - "5102:5102"
+      - "7095:7095"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DOTNET_URLS=http://+:5102;
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - ConnectionStrings__Redis=redis:6379,password=invalid8_redis_password,abortConnect=false
+      - ConnectionStrings__Database=Data Source=/app/todos.db
+      - Redis__Password=invalid8_redis_password
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./samples/Invalid8.Samples.WebApi/todos.db:/app/todos.db
+
+volumes:
+  redis_data:
+    driver: local
+  redis_insight_data:
+    driver: local
