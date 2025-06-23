@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <PackageId>Invalid8.Providers.Cache.Redis</PackageId>
+        <Version>$(Invalid8Version)</Version>
+        <Description>Redis cache provider implementation for Invalid8 caching library. Provides distributed caching using StackExchange.Redis.</Description>
+        <PackageTags>caching;redis;distributed-cache;stackexchange;net8.0</PackageTags>
+        <IsPackable>true</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Invalid8.Providers.Base\Invalid8.Providers.Base.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.8"/>
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <PackageId>Invalid8.Core</PackageId>
+        <Version>$(Invalid8Version)</Version>
+        <Description>Core abstractions and interfaces for the Invalid8 caching library. Contains caching contracts, event models, and provider interfaces.</Description>
+        <PackageTags>caching;abstractions;interfaces;net8.0;distributed-cache</PackageTags>
+        <IsPackable>true</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.0-preview.7.25380.108" />
+    </ItemGroup>
+
+</Project>
