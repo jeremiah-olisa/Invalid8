@@ -1,0 +1,6 @@
+@Invalid8.WebApi.Sample_HostAddress = http://localhost:5140
+
+GET {{Invalid8.WebApi.Sample_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
