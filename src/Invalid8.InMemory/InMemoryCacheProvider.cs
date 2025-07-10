@@ -7,32 +7,64 @@ namespace Invalid8.InMemory;
 public class InMemoryCacheProvider : ICacheProvider
 {
     private readonly ConcurrentDictionary<string, CacheEntry<object>> _cache = new();
+    public Guid InstanceId { get; } = Guid.NewGuid();
 
     public async Task<T?> GetAsync<T>(string[] key, CancellationToken ct = default)
     {
-        var cacheKey = GenerateCacheKey(key, ct);
+        ArgumentNullException.ThrowIfNull(key);
+        if (key.Length == 0) throw new ArgumentException("Key cannot be empty", nameof(key));
 
-        // Early return if cancellation is requested
+        var cacheKey = GenerateCacheKey(key, ct);
         ct.ThrowIfCancellationRequested();
 
-        if (_cache.TryGetValue(cacheKey, out var entry) && entry is CacheEntry<T> typedEntry)
+        // Since we store CacheEntry<object>, we need to work with that type
+        if (_cache.TryGetValue(cacheKey, out var entry))
         {
-            if (typedEntry.IsExpired)
+            if (entry.IsExpired)
             {
-                // Use TryRemoveAsync if available, or keep synchronous version
                 _cache.TryRemove(cacheKey, out _);
                 return default;
             }
 
-            // Update last accessed time asynchronously if needed
-            typedEntry.LastAccessedAt = DateTime.UtcNow;
+            // Update last accessed time
+            entry.LastAccessedAt = DateTime.UtcNow;
 
-            // If data might need async loading, you could await here
-            return typedEntry.Data;
+            // The key fix: Cast the stored Data (which is object) to the requested type T
+            try
+            {
+                if (entry.Data is T typedData)
+                {
+                    return typedData;
+                }
+
+                // Handle null case
+                if (entry.Data == null && !typeof(T).IsValueType)
+                {
+                    return default;
+                }
+
+                // If direct cast fails, try Convert.ChangeType for basic types
+                if (entry.Data != null)
+                {
+                    var convertedData = (T)Convert.ChangeType(entry.Data, typeof(T));
+                    return convertedData;
+                }
+            }
+            catch (InvalidCastException)
+            {
+                // If the stored type doesn't match and can't be converted, remove the entry
+                _cache.TryRemove(cacheKey, out _);
+                return default;
+            }
+            catch (FormatException)
+            {
+                // If conversion fails, remove the entry
+                _cache.TryRemove(cacheKey, out _);
+                return default;
+            }
         }
 
-        // Return completed task with default value
-        return await Task.FromResult<T?>(default);
+        return default;
     }
 
     public Task SetAsync<T>(string[] key, T value, CacheQueryOptions options, CancellationToken ct = default)

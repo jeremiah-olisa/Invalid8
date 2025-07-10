@@ -10,4 +10,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ICacheProvider, InMemoryCacheProvider>();
         return services;
     }
+
+    public static IServiceCollection AddMemoryCacheProvider(this IServiceCollection services)
+    {
+        services.AddSingleton<ICacheProvider, MemoryCacheProvider>();
+        return services;
+    }
+
 }

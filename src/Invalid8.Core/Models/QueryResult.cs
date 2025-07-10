@@ -5,4 +5,6 @@ public class QueryResult<T>
     public T? Data { get; set; }
     public bool IsFromCache { get; set; }
     public bool IsStale { get; set; }
+
+    public T GetData() => Data ?? throw new ArgumentNullException(nameof(Data));
 }
