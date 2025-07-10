@@ -1,6 +1,8 @@
 ﻿namespace Invalid8.Core;
 
-public class IEventProvider
-{
 
+public interface IEventProvider
+{
+    Task PublishAsync(CacheInvalidationEvent @event, CancellationToken ct = default);
+    Task SubscribeAsync(Func<CacheInvalidationEvent, Task> handler, CancellationToken ct = default);
 }

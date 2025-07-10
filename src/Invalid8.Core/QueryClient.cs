@@ -1,7 +1,6 @@
-﻿using Invalid8.Core;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 
-namespace Invalid8;
+namespace Invalid8.Core;
 
 public class QueryClient : IQueryClient
 {
