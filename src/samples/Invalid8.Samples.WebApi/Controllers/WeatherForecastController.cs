@@ -22,22 +22,8 @@ public class WeatherForecastController : ControllerBase
     {
         var result = await _queryClient.UseCachedQueryAsync(
             key: item,
-            queryMethod: async () =>
-            {
-                // Simulate a heavy data fetch
-                await Task.Delay(10000);
-                return Enumerable.Range(1, 5).Select(index => new WeatherForecast
-                {
-                    Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    TemperatureC = Random.Shared.Next(-20, 55),
-                    Summary = Summaries[Random.Shared.Next(Summaries.Length)]
-                }).ToArray();
-            },
-            options: new CacheQueryOptions
-            {
-                StaleTime = TimeSpan.FromSeconds(5),
-                CacheTime = TimeSpan.FromMinutes(1)
-            });
+            queryMethod: GetWeatherForcastFromDb()
+        );
 
         return result;
     }
@@ -60,6 +46,22 @@ public class WeatherForecastController : ControllerBase
 
         return Ok("Cache invalidated");
     }
+
+    private static Func<Task<WeatherForecast[]>> GetWeatherForcastFromDb()
+    {
+        return async () =>
+        {
+            // Simulate a heavy data fetch
+            await Task.Delay(10000);
+            return Enumerable.Range(1, 5).Select(index => new WeatherForecast
+            {
+                Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                TemperatureC = Random.Shared.Next(-20, 55),
+                Summary = Summaries[Random.Shared.Next(Summaries.Length)]
+            }).ToArray();
+        };
+    }
+
 }
 
 public class WeatherForecast

@@ -1,82 +1,78 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Invalid8.Core.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Invalid8.Core;
 
 public class QueryClient : IQueryClient
 {
-    private readonly ICacheProvider _cacheProvider;
+    private readonly ICacheProvider _cache;
     private readonly IEventProvider _eventProvider;
+    private readonly IGenerateKey _keyGenerator;
     private readonly ILogger<QueryClient> _logger;
 
-    public QueryClient(
-        ICacheProvider cacheProvider,
-        IEventProvider eventProvider,
-        ILogger<QueryClient> logger)
+    public QueryClient(ICacheProvider cache, IEventProvider eventProvider, IGenerateKey keyGenerator, ILogger<QueryClient> logger)
     {
-        _cacheProvider = cacheProvider ?? throw new ArgumentNullException(nameof(cacheProvider));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _eventProvider = eventProvider ?? throw new ArgumentNullException(nameof(eventProvider));
+        _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<QueryResult<T>> UseCachedQueryAsync<T>(
         string[] key,
         Func<Task<T>> queryMethod,
-        CacheQueryOptions? options = null,
+        CacheQueryOptions options,
         CancellationToken ct = default)
     {
-        options ??= new CacheQueryOptions();
-        var result = new QueryResult<T>();
-        var cacheKey = string.Join(":", key);
-        var cached = await _cacheProvider.GetAsync<T>(key, ct);
+        var cacheKey = _keyGenerator.Generate(key);
+        var metadata = await _cache.GetEntryMetadataAsync(key, ct);
+        var cacheEntry = await _cache.GetAsync<T>(key, ct);
 
-        if (cached != null)
+        if (cacheEntry != null && !metadata!.IsExpired)
         {
-            result.Data = cached;
-            result.IsFromCache = true;
-
-            var metadata = await _cacheProvider.GetEntryMetadataAsync(key, ct);
-            result.IsStale = metadata?.IsStale ?? false;
-
-            if (options.EnableBackgroundRefetch && result.IsStale)
+            if (!metadata.IsStale || !options.EnableBackgroundRefetch)
             {
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        var freshData = await queryMethod();
-                        await _cacheProvider.SetAsync(key, freshData, options, ct);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Background refresh failed for cache key {CacheKey}", cacheKey);
-                    }
-                }, ct);
+                return new QueryResult<T> { Data = cacheEntry, IsFromCache = true, IsStale = metadata.IsStale };
             }
-            return result;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var freshData = await queryMethod();
+                    await _cache.SetAsync(key, freshData, options, ct);
+                    await _eventProvider.PublishAsync(new CacheUpdatedEvent(key, freshData), ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Background refresh failed for cache key {CacheKey}", cacheKey);
+                }
+            }, ct);
+
+            return new QueryResult<T> { Data = cacheEntry, IsFromCache = true, IsStale = metadata.IsStale };
         }
 
-        result.Data = await queryMethod();
-        await _cacheProvider.SetAsync(key, result.Data, options, ct);
-        return result;
+        var data = await queryMethod();
+        await _cache.SetAsync(key, data, options, ct);
+        await _eventProvider.PublishAsync(new CacheUpdatedEvent(key, data), ct);
+        return new QueryResult<T> { Data = data, IsFromCache = false, IsStale = false };
     }
 
     public async Task<T> UseMutateQueryAsync<T>(
         string[] key,
         Func<Task<T>> mutationFunc,
-        MutationOptions? options = null,
+        MutationOptions options,
         CancellationToken ct = default)
     {
-        options ??= new MutationOptions();
         var result = await mutationFunc();
+        await _cache.InvalidateAsync(key, ct);
+        await _eventProvider.PublishAsync(new CacheInvalidationEvent(key), ct);
 
-        if (options.InvalidateQueries)
+        if (options?.InvalidationKeys != null)
         {
-            await _cacheProvider.InvalidateAsync(key, ct);
-            await _eventProvider.PublishAsync(new CacheInvalidationEvent(key), ct);
-
             foreach (var invalidationKey in options.InvalidationKeys)
             {
-                await _cacheProvider.InvalidateAsync(invalidationKey, ct);
+                await _cache.InvalidateAsync(invalidationKey, ct);
                 await _eventProvider.PublishAsync(new CacheInvalidationEvent(invalidationKey), ct);
             }
         }

@@ -4,9 +4,10 @@ using System.Text.RegularExpressions;
 
 namespace Invalid8.InMemory;
 
-public class InMemoryCacheProvider : ICacheProvider
+public class InMemoryCacheProvider(IGenerateKey keyGenerator) : ICacheProvider
 {
     private readonly ConcurrentDictionary<string, CacheEntry<object>> _cache = new();
+    private readonly IGenerateKey _keyGenerator = keyGenerator;
     public Guid InstanceId { get; } = Guid.NewGuid();
 
     public async Task<T?> GetAsync<T>(string[] key, CancellationToken ct = default)
@@ -14,7 +15,7 @@ public class InMemoryCacheProvider : ICacheProvider
         ArgumentNullException.ThrowIfNull(key);
         if (key.Length == 0) throw new ArgumentException("Key cannot be empty", nameof(key));
 
-        var cacheKey = GenerateCacheKey(key, ct);
+        var cacheKey = _keyGenerator.Generate(key, ct);
         ct.ThrowIfCancellationRequested();
 
         // Since we store CacheEntry<object>, we need to work with that type
@@ -69,7 +70,7 @@ public class InMemoryCacheProvider : ICacheProvider
 
     public Task SetAsync<T>(string[] key, T value, CacheQueryOptions options, CancellationToken ct = default)
     {
-        var cacheKey = GenerateCacheKey(key, ct);
+        var cacheKey = _keyGenerator.Generate(key, ct);
 
         var entry = new CacheEntry<object>
         {
@@ -86,7 +87,7 @@ public class InMemoryCacheProvider : ICacheProvider
 
     public Task<CacheEntryMetadata?> GetEntryMetadataAsync(string[] key, CancellationToken ct = default)
     {
-        string cacheKey = GenerateCacheKey(key, ct);
+        string cacheKey = _keyGenerator.Generate(key, ct);
 
         if (_cache.TryGetValue(cacheKey, out var entry))
         {
@@ -100,24 +101,11 @@ public class InMemoryCacheProvider : ICacheProvider
         return Task.FromResult<CacheEntryMetadata?>(null);
     }
 
-    private static string GenerateCacheKey(string[] key, CancellationToken ct = default)
-    {
-        // Validate input
-        ArgumentNullException.ThrowIfNull(key);
-
-        if (key.Length == 0 || key.Any(string.IsNullOrWhiteSpace))
-            throw new ArgumentException("Key cannot be empty or contain whitespace", nameof(key));
-
-        // Early cancellation check
-        ct.ThrowIfCancellationRequested();
-
-        var cacheKey = string.Join(":", key);
-        return cacheKey;
-    }
+    
 
     public Task InvalidateAsync(string[] key, CancellationToken ct = default)
     {
-        var cacheKey = GenerateCacheKey(key, ct);
+        var cacheKey = _keyGenerator.Generate(key, ct);
 
         _cache.TryRemove(cacheKey, out _);
 

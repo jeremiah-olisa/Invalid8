@@ -1,27 +1,24 @@
 ﻿using Invalid8.Core;
+using Microsoft.Extensions.Logging;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Invalid8.Samples.WebApi;
 
-public class CacheInvalidationSubscriber : IHostedService
+public class CacheInvalidationSubscriber(IEventProvider eventProvider, IGenerateKey keyGenerator, ILogger<CacheInvalidationSubscriber> logger) : IHostedService
 {
-    private readonly IEventProvider _eventProvider;
-    private readonly ILogger<CacheInvalidationSubscriber> _logger;
+    private readonly IEventProvider _eventProvider = eventProvider ?? throw new ArgumentNullException(nameof(eventProvider));
+    private readonly IGenerateKey _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));
+    private readonly ILogger<CacheInvalidationSubscriber> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-    public CacheInvalidationSubscriber(IEventProvider eventProvider, ILogger<CacheInvalidationSubscriber> logger)
+    public async Task StartAsync(CancellationToken ct = default)
     {
-        _eventProvider = eventProvider;
-        _logger = logger;
-    }
-
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        await _eventProvider.SubscribeAsync(@event =>
+        await _eventProvider.SubscribeAsync((CacheInvalidationEvent @event) =>
         {
-            _logger.LogInformation("Cache invalidated for key: {CacheKey} at {Timestamp}",
-                string.Join(":", @event.Key), @event.Timestamp);
+            _logger.LogInformation("Cache invalidated for key: {CacheKey} at {Timestamp}", @event.Key, @event.Timestamp);
 
             return Task.CompletedTask;
-        }, cancellationToken);
+        }, ct);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

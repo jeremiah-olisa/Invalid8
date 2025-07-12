@@ -6,21 +6,19 @@ namespace Invalid8.InMemory;
 public class MemoryCacheProvider : ICacheProvider
 {
     private readonly IMemoryCache _cache;
+    private readonly IGenerateKey _keyGenerator;
     public Guid InstanceId { get; } = Guid.NewGuid();
 
-    public MemoryCacheProvider(IMemoryCache cache)
+    public MemoryCacheProvider(IMemoryCache cache, IGenerateKey keyGenerator)
     {
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));
     }
 
 
     public Task<T?> GetAsync<T>(string[] key, CancellationToken ct = default)
     {
-        ArgumentNullException.ThrowIfNull(key);
-        if (key.Length == 0) throw new ArgumentException("Key cannot be empty", nameof(key));
-
-        var cacheKey = GenerateCacheKey(key);
-        ct.ThrowIfCancellationRequested();
+        var cacheKey = _keyGenerator.Generate(key, ct);
 
         if (_cache.TryGetValue(cacheKey, out var value) && value is T typedValue)
         {
@@ -32,12 +30,7 @@ public class MemoryCacheProvider : ICacheProvider
 
     public Task SetAsync<T>(string[] key, T value, CacheQueryOptions options, CancellationToken ct = default)
     {
-        ArgumentNullException.ThrowIfNull(key);
-        ArgumentNullException.ThrowIfNull(options);
-        if (key.Length == 0) throw new ArgumentException("Key cannot be empty", nameof(key));
-
-        var cacheKey = GenerateCacheKey(key);
-        ct.ThrowIfCancellationRequested();
+        var cacheKey = _keyGenerator.Generate(key, ct);
 
         var cacheEntryOptions = new MemoryCacheEntryOptions();
 
@@ -62,11 +55,7 @@ public class MemoryCacheProvider : ICacheProvider
 
     public Task<CacheEntryMetadata?> GetEntryMetadataAsync(string[] key, CancellationToken ct = default)
     {
-        ArgumentNullException.ThrowIfNull(key);
-        if (key.Length == 0) throw new ArgumentException("Key cannot be empty", nameof(key));
-
-        string cacheKey = GenerateCacheKey(key);
-        ct.ThrowIfCancellationRequested();
+        string cacheKey = _keyGenerator.Generate(key, ct); 
 
         // MemoryCache doesn't expose metadata directly, so we'll do a simple check
         if (_cache.TryGetValue(cacheKey, out _))
@@ -81,22 +70,11 @@ public class MemoryCacheProvider : ICacheProvider
         return Task.FromResult<CacheEntryMetadata?>(null);
     }
 
-    private static string GenerateCacheKey(string[] key)
-    {
-        ArgumentNullException.ThrowIfNull(key);
-        if (key.Length == 0 || key.Any(string.IsNullOrWhiteSpace))
-            throw new ArgumentException("Key cannot be empty or contain whitespace", nameof(key));
-
-        return string.Join(":", key);
-    }
 
     public Task InvalidateAsync(string[] key, CancellationToken ct = default)
     {
-        ArgumentNullException.ThrowIfNull(key);
-        if (key.Length == 0) throw new ArgumentException("Key cannot be empty", nameof(key));
 
-        var cacheKey = GenerateCacheKey(key);
-        ct.ThrowIfCancellationRequested();
+        var cacheKey = _keyGenerator.Generate(key, ct);
 
         _cache.Remove(cacheKey);
         return Task.CompletedTask;

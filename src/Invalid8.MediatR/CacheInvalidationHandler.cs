@@ -1,4 +1,5 @@
 ﻿using Invalid8.Core;
+using Invalid8.MediatR.Events;
 using MediatR;
 
 namespace Invalid8.MediatR;
