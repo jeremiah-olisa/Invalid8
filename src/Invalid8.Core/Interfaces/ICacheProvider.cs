@@ -99,7 +99,6 @@ public interface ICacheProvider
     /// </example>
     Task InvalidateAsync(string[] key, CancellationToken ct = default);
 
-    //abstract string GenerateCacheKey(string[] key);
     /// <summary>
     /// Invalidates all cache entries whose keys match the specified pattern using regular expression matching.
     /// This method provides flexible cache invalidation capabilities using regex patterns.

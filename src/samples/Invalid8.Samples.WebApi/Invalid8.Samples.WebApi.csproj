@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Invalid8.InMemory\Invalid8.InMemory.csproj" />
     <ProjectReference Include="..\..\Invalid8.MediatR\Invalid8.MediatR.csproj" />
+    <ProjectReference Include="..\..\Invalid8.SignalR\Invalid8.SignalR.csproj" />
   </ItemGroup>
 
 </Project>

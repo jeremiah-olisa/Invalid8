@@ -5,10 +5,9 @@ using System.Threading.Tasks;
 
 namespace Invalid8.Samples.WebApi;
 
-public class CacheInvalidationSubscriber(IEventProvider eventProvider, IGenerateKey keyGenerator, ILogger<CacheInvalidationSubscriber> logger) : IHostedService
+public class CacheInvalidationSubscriber(IEventProvider eventProvider, ILogger<CacheInvalidationSubscriber> logger) : IHostedService
 {
     private readonly IEventProvider _eventProvider = eventProvider ?? throw new ArgumentNullException(nameof(eventProvider));
-    private readonly IGenerateKey _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));
     private readonly ILogger<CacheInvalidationSubscriber> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     public async Task StartAsync(CancellationToken ct = default)

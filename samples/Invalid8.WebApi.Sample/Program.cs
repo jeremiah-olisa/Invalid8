@@ -1,8 +1,13 @@
+using Microsoft.AspNetCore.SignalR;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// Register SignalR event provider with the concrete hub
+builder.Services.AddSignalREventProvider<Invalid8Hub>();
 
 var app = builder.Build();
 
@@ -13,6 +18,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Map the SignalR hub endpoint
+app.MapHub<Invalid8Hub>("/invalid8Hub");
 
 var summaries = new[]
 {
@@ -39,3 +47,6 @@ record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
+
+// Add a concrete SignalR Hub for cache invalidation events
+public class Invalid8Hub : Hub { }

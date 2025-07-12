@@ -2,6 +2,8 @@ using Invalid8.InMemory.Extensions;
 using Invalid8.MediatR.Extensions;
 using Invalid8.Core.Extensions;
 using Invalid8.Samples.WebApi;
+using Invalid8.SignalR.Extensions;
+using Invalid8.SignalR.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,7 +16,8 @@ builder.Services.AddSwaggerGen();
 
 // Register Invalid8 with InMemory Cache + MediatR Events
 builder.Services.AddInMemoryCacheProvider();
-builder.Services.AddMediatREventProvider();
+builder.Services.AddSignalREventProvider();
+// builder.Services.AddMediatREventProvider();
 builder.Services.AddInvalid8();
 
 // Manual subscription to cache invalidation events
@@ -36,5 +39,7 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<IInvalid8Hub>("/invalid8Hub");
+
 
 app.Run();

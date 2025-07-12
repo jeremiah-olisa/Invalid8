@@ -13,7 +13,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddInvalid8(this IServiceCollection services)
     {
-        AddQueryClient(services);
+        services.AddQueryClient();
         services.AddSingleton<IGenerateKey, CacheKeyGenerator>();
         return services;
     }

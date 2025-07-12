@@ -5,34 +5,53 @@ namespace Invalid8.Core;
 
 public class QueryClient : IQueryClient
 {
-    private readonly ICacheProvider _cache;
-    private readonly IEventProvider _eventProvider;
+    private readonly IEnumerable<ICacheProvider> _cacheProviders;
+    private readonly IEnumerable<IEventProvider> _eventProviders;
     private readonly IGenerateKey _keyGenerator;
     private readonly ILogger<QueryClient> _logger;
+    private readonly ICacheProvider _defaultCacheProvider;
+    private readonly IEventProvider _defaultEventProvider;
 
-    public QueryClient(ICacheProvider cache, IEventProvider eventProvider, IGenerateKey keyGenerator, ILogger<QueryClient> logger)
+    public QueryClient(
+        IEnumerable<ICacheProvider> cacheProviders,
+        IEnumerable<IEventProvider> eventProviders,
+        IGenerateKey keyGenerator,
+        ILogger<QueryClient> logger)
     {
-        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-        _eventProvider = eventProvider ?? throw new ArgumentNullException(nameof(eventProvider));
+        _cacheProviders = cacheProviders ?? throw new ArgumentNullException(nameof(cacheProviders));
+        _eventProviders = eventProviders ?? throw new ArgumentNullException(nameof(eventProviders));
         _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(keyGenerator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        if (!_cacheProviders.Any())
+            throw new ArgumentException("At least one cache provider must be registered.", nameof(cacheProviders));
+        if (!_eventProviders.Any())
+            throw new ArgumentException("At least one event provider must be registered.", nameof(eventProviders));
+
+        _defaultCacheProvider = _cacheProviders.First();
+        _defaultEventProvider = _eventProviders.First();
     }
 
     public async Task<QueryResult<T>> UseCachedQueryAsync<T>(
         string[] key,
         Func<Task<T>> queryMethod,
-        CacheQueryOptions options,
+        CacheQueryOptions? options = default,
+        string? cacheProviderName = null,
+        string? eventProviderName = null,
         CancellationToken ct = default)
     {
-        var cacheKey = _keyGenerator.Generate(key);
-        var metadata = await _cache.GetEntryMetadataAsync(key, ct);
-        var cacheEntry = await _cache.GetAsync<T>(key, ct);
+        ICacheProvider cacheProvider = GetCacheProvider(cacheProviderName);
+        IEventProvider eventProvider = GetEventProvider(eventProviderName);
+        CacheEntryMetadata? metadata = await cacheProvider.GetEntryMetadataAsync(key, ct);
+        T? cacheEntry = await cacheProvider.GetAsync<T>(key, ct);
+
+        options ??= new();
 
         if (cacheEntry != null && !metadata!.IsExpired)
         {
             if (!metadata.IsStale || !options.EnableBackgroundRefetch)
             {
-                return new QueryResult<T> { Data = cacheEntry, IsFromCache = true, IsStale = metadata.IsStale };
+                return new QueryResult<T>(cacheEntry, true, metadata.IsStale);
             }
 
             _ = Task.Run(async () =>
@@ -40,43 +59,78 @@ public class QueryClient : IQueryClient
                 try
                 {
                     var freshData = await queryMethod();
-                    await _cache.SetAsync(key, freshData, options, ct);
-                    await _eventProvider.PublishAsync(new CacheUpdatedEvent(key, freshData), ct);
+                    await cacheProvider.SetAsync(key, freshData, options, ct);
+                    await eventProvider.PublishAsync(new CacheUpdatedEvent(key, freshData), ct);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Background refresh failed for cache key {CacheKey}", cacheKey);
+                    _logger.LogWarning(ex, "Background refresh failed for cache key {CacheKey} with provider {ProviderName}",
+                        key, cacheProvider.GetType().Name);
                 }
             }, ct);
 
-            return new QueryResult<T> { Data = cacheEntry, IsFromCache = true, IsStale = metadata.IsStale };
+            return new QueryResult<T>(cacheEntry, true, metadata.IsStale);
         }
 
         var data = await queryMethod();
-        await _cache.SetAsync(key, data, options, ct);
-        await _eventProvider.PublishAsync(new CacheUpdatedEvent(key, data), ct);
-        return new QueryResult<T> { Data = data, IsFromCache = false, IsStale = false };
+
+        await cacheProvider.SetAsync(key, data, options, ct);
+        await eventProvider.PublishAsync(new CacheUpdatedEvent(key, data), ct);
+
+        return new QueryResult<T>(data, false, false);
     }
 
     public async Task<T> UseMutateQueryAsync<T>(
         string[] key,
         Func<Task<T>> mutationFunc,
-        MutationOptions options,
+        MutationOptions? options = default,
+        string? cacheProviderName = null,
+        string? eventProviderName = null,
         CancellationToken ct = default)
     {
-        var result = await mutationFunc();
-        await _cache.InvalidateAsync(key, ct);
-        await _eventProvider.PublishAsync(new CacheInvalidationEvent(key), ct);
+        var cacheProvider = GetCacheProvider(cacheProviderName);
+        var eventProvider = GetEventProvider(eventProviderName);
 
+        var result = await mutationFunc();
+
+        // Combine input key with InvalidationKeys, ensuring uniqueness
+        List<string[]> invalidationKeys = [key];
         if (options?.InvalidationKeys != null)
+            invalidationKeys.AddRange(options.InvalidationKeys);
+
+
+        // Remove duplicates based on composite key
+        var uniqueKeys = invalidationKeys
+            .GroupBy(k => _keyGenerator.Generate(k))
+            .Select(g => g.First())
+            .ToList();
+
+        foreach (var invalidationKey in uniqueKeys)
         {
-            foreach (var invalidationKey in options.InvalidationKeys)
-            {
-                await _cache.InvalidateAsync(invalidationKey, ct);
-                await _eventProvider.PublishAsync(new CacheInvalidationEvent(invalidationKey), ct);
-            }
+            await cacheProvider.InvalidateAsync(invalidationKey, ct);
+            await eventProvider.PublishAsync(new CacheInvalidationEvent(invalidationKey), ct);
         }
 
         return result;
+    }
+
+    private ICacheProvider GetCacheProvider(string? providerName)
+    {
+        if (string.IsNullOrEmpty(providerName))
+            return _defaultCacheProvider;
+
+        var provider = _cacheProviders.FirstOrDefault(p => p.GetType().Name == providerName)
+            ?? throw new ArgumentException($"No cache provider found with name: {providerName}");
+        return provider;
+    }
+
+    private IEventProvider GetEventProvider(string? providerName)
+    {
+        if (string.IsNullOrEmpty(providerName))
+            return _defaultEventProvider;
+
+        var provider = _eventProviders.FirstOrDefault(p => p.GetType().Name == providerName)
+            ?? throw new ArgumentException($"No event provider found with name: {providerName}");
+        return provider;
     }
 }

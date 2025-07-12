@@ -3,14 +3,16 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using Invalid8.Core.Models;
+using Microsoft.Extensions.Hosting;
+using Invalid8.SignalR.Interfaces;
 
 namespace Invalid8.SignalR;
 
-public class SignalREventProvider<T>(IHubContext<T> hubContext, ILogger<SignalREventProvider<T>> logger, IGenerateKey keyGenerator) : IEventProvider where T : Hub
+public class SignalREventProvider(IHubContext<IInvalid8Hub> hubContext, ILogger<SignalREventProvider> logger, IGenerateKey keyGenerator) : IEventProvider
 {
-    private readonly IHubContext<T> _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
+    private readonly IHubContext<IInvalid8Hub> _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
     private readonly IGenerateKey _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(hubContext));
-    private readonly ILogger<SignalREventProvider<T>> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly ILogger<SignalREventProvider> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly ConcurrentBag<Func<CacheInvalidationEvent, Task>> _invalidationSubscribers = [];
     private readonly ConcurrentBag<Func<CacheUpdatedEvent, Task>> _updateSubscribers = [];
 

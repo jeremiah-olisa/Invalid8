@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SignalR Invalid8 Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+</head>
+<body>
+    <h1>SignalR Invalid8 Test</h1>
+    <div id="status">Connecting...</div>
+    <ul id="events"></ul>
+    <script>
+        const status = document.getElementById('status');
+        const events = document.getElementById('events');
+        // Adjust the URL if not running on localhost:5000
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/invalid8Hub")
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        connection.on("CacheInvalidated", (key, timestamp) => {
+            const li = document.createElement('li');
+            li.textContent = `CacheInvalidated: key=[${key}], timestamp=${timestamp}`;
+            events.appendChild(li);
+            console.log("CacheInvalidated", key, timestamp);
+        });
+
+        connection.on("CacheUpdated", (key, data, timestamp) => {
+            const li = document.createElement('li');
+            li.textContent = `CacheUpdated: key=[${key}], data=${JSON.stringify(data)}, timestamp=${timestamp}`;
+            events.appendChild(li);
+            console.log("CacheUpdated", key, data, timestamp);
+        });
+
+        connection.start()
+            .then(() => {
+                status.textContent = "Connected to SignalR!";
+                console.log("Connected to SignalR hub");
+            })
+            .catch(err => {
+                status.textContent = "Connection failed: " + err;
+                console.error(err);
+            });
+    </script>
+</body>
+</html> 
