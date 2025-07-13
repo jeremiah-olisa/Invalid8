@@ -1,46 +1,146 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>SignalR Invalid8 Test</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
-</head>
-<body>
-    <h1>SignalR Invalid8 Test</h1>
-    <div id="status">Connecting...</div>
-    <ul id="events"></ul>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cache Invalidation Monitor</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- SignalR JS Client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <style>
+      .terminal {
+        font-family: "Courier New", monospace;
+      }
+      .blink {
+        animation: blink 1s step-end infinite;
+      }
+      @keyframes blink {
+        from,
+        to {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-gray-900 text-gray-100 min-h-screen p-6">
+    <div class="max-w-4xl mx-auto">
+      <h1 class="text-2xl font-bold mb-4 text-green-400">
+        Cache Invalidation Monitor
+      </h1>
+
+      <div class="bg-black rounded-lg p-4 shadow-lg terminal">
+        <div class="flex items-center mb-2">
+          <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+          <div class="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
+          <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+          <div class="text-sm ml-2">cache-monitor.exe</div>
+        </div>
+
+        <div id="terminalOutput" class="overflow-y-auto max-h-96">
+          <div class="text-green-400">> Waiting for cache invalidations...</div>
+          <div class="text-gray-500 blink">_</div>
+        </div>
+      </div>
+
+      <div class="mt-4 text-sm text-gray-400">
+        Connected to:
+        <span id="connectionStatus" class="font-mono">Disconnected</span>
+      </div>
+    </div>
+
     <script>
-        const status = document.getElementById('status');
-        const events = document.getElementById('events');
-        // Adjust the URL if not running on localhost:5000
+      document.addEventListener("DOMContentLoaded", function () {
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/invalid8Hub")
-            .configureLogging(signalR.LogLevel.Information)
-            .build();
+          .withUrl("https://localhost:7164/invalid8-hub", {
+            skipNegotiation: true,
+            transport: signalR.HttpTransportType.WebSockets,
+          })
+          .configureLogging(signalR.LogLevel.Information)
+          .build();
 
-        connection.on("CacheInvalidated", (key, timestamp) => {
-            const li = document.createElement('li');
-            li.textContent = `CacheInvalidated: key=[${key}], timestamp=${timestamp}`;
-            events.appendChild(li);
-            console.log("CacheInvalidated", key, timestamp);
+        const terminalOutput = document.getElementById("terminalOutput");
+        const connectionStatus = document.getElementById("connectionStatus");
+
+        // Remove blinking cursor when connected
+        function removeBlinker() {
+          const blinkers = document.querySelectorAll(".blink");
+          blinkers.forEach((el) => el.remove());
+        }
+
+        // Add a new line to the terminal
+        function addTerminalLine(text, color = "text-gray-100") {
+          const line = document.createElement("div");
+          line.className = `font-mono ${color}`;
+          line.textContent = `> ${text}`;
+          terminalOutput.insertBefore(line, terminalOutput.lastElementChild);
+        }
+
+        // Handle cache invalidation events
+        connection.on("CacheInvalidated", (cacheKey, timestamp) => {
+          removeBlinker();
+
+          const date = new Date(timestamp);
+          const timeString = date.toLocaleTimeString();
+
+          addTerminalLine(`Cache invalidated at ${timeString}`, "text-red-400");
+
+          const codeBlock = document.createElement("div");
+          codeBlock.className = "bg-gray-800 rounded p-3 my-2 overflow-x-auto";
+          codeBlock.innerHTML = `
+                    <div class="text-green-400">Key:</div>
+                    <div class="text-gray-300 font-mono">${cacheKey}</div>
+                `;
+          terminalOutput.insertBefore(
+            codeBlock,
+            terminalOutput.lastElementChild
+          );
+
+          // Add new blinker
+          const blinker = document.createElement("div");
+          blinker.className = "text-gray-500 blink";
+          blinker.textContent = "_";
+          terminalOutput.appendChild(blinker);
+
+          // Auto-scroll to bottom
+          terminalOutput.scrollTop = terminalOutput.scrollHeight;
         });
 
-        connection.on("CacheUpdated", (key, data, timestamp) => {
-            const li = document.createElement('li');
-            li.textContent = `CacheUpdated: key=[${key}], data=${JSON.stringify(data)}, timestamp=${timestamp}`;
-            events.appendChild(li);
-            console.log("CacheUpdated", key, data, timestamp);
+        // Start the connection
+        async function start() {
+          try {
+            await connection.start();
+            connectionStatus.textContent = "Connected";
+            connectionStatus.className = "font-mono text-green-400";
+            addTerminalLine(
+              "Connected to cache invalidation hub",
+              "text-green-400"
+            );
+          } catch (err) {
+            connectionStatus.textContent = "Connection failed";
+            connectionStatus.className = "font-mono text-red-400";
+            addTerminalLine(`Connection error: ${err}`, "text-red-400");
+            setTimeout(() => start(), 5000);
+          }
+        }
+
+        // Handle connection closed
+        connection.onclose(async () => {
+          connectionStatus.textContent = "Disconnected";
+          connectionStatus.className = "font-mono text-red-400";
+          addTerminalLine(
+            "Connection lost. Attempting to reconnect...",
+            "text-yellow-400"
+          );
+          await start();
         });
 
-        connection.start()
-            .then(() => {
-                status.textContent = "Connected to SignalR!";
-                console.log("Connected to SignalR hub");
-            })
-            .catch(err => {
-                status.textContent = "Connection failed: " + err;
-                console.error(err);
-            });
+        // Start the connection
+        start();
+      });
     </script>
-</body>
-</html> 
+  </body>
+</html>

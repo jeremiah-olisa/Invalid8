@@ -4,13 +4,13 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using Invalid8.Core.Models;
 using Microsoft.Extensions.Hosting;
-using Invalid8.SignalR.Interfaces;
+using Invalid8.SignalR.Constants;
 
 namespace Invalid8.SignalR;
 
-public class SignalREventProvider(IHubContext<IInvalid8Hub> hubContext, ILogger<SignalREventProvider> logger, IGenerateKey keyGenerator) : IEventProvider
+public class SignalREventProvider(IHubContext<Invalid8Hub> hubContext, ILogger<SignalREventProvider> logger, IGenerateKey keyGenerator) : IEventProvider
 {
-    private readonly IHubContext<IInvalid8Hub> _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
+    private readonly IHubContext<Invalid8Hub> _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
     private readonly IGenerateKey _keyGenerator = keyGenerator ?? throw new ArgumentNullException(nameof(hubContext));
     private readonly ILogger<SignalREventProvider> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     private readonly ConcurrentBag<Func<CacheInvalidationEvent, Task>> _invalidationSubscribers = [];
@@ -21,7 +21,7 @@ public class SignalREventProvider(IHubContext<IInvalid8Hub> hubContext, ILogger<
         var cacheKey = _keyGenerator.Generate(@event.Key, ct);
         try
         {
-            await _hubContext.Clients.All.SendAsync("CacheInvalidated", cacheKey, @event.Timestamp, ct);
+            await _hubContext.Clients.All.SendAsync(HubEvent.CacheInvalidated.Name, cacheKey, @event.Timestamp, ct);
             var tasks = _invalidationSubscribers.Select(subscriber => subscriber(@event)).ToArray();
 
             await Task.WhenAll(tasks).ConfigureAwait(false);
@@ -40,7 +40,7 @@ public class SignalREventProvider(IHubContext<IInvalid8Hub> hubContext, ILogger<
         var cacheKey = _keyGenerator.Generate(@event.Key, ct);
         try
         {
-            await _hubContext.Clients.All.SendAsync("CacheUpdated", cacheKey, @event.Data, @event.Timestamp, ct);
+            await _hubContext.Clients.All.SendAsync(HubEvent.CacheUpdated.Name, cacheKey, @event.Data, @event.Timestamp, ct);
 
             var tasks = _updateSubscribers.Select(subscriber => subscriber(@event)).ToArray();
             await Task.WhenAll(tasks).ConfigureAwait(false);

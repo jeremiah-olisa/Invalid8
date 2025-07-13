@@ -5,17 +5,15 @@ namespace Invalid8.Samples.WebApi.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class WeatherForecastController : ControllerBase
+public class WeatherForecastController(IQueryClient queryClient) : ControllerBase
 {
     private static readonly string[] Summaries =
     [
         "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Swelterin", "Scorching"
     ];
 
-    private readonly IQueryClient _queryClient;
+    private readonly IQueryClient _queryClient = queryClient;
     private static readonly string[] item = ["weather", "forecast"];
-
-    public WeatherForecastController(IQueryClient queryClient) => _queryClient = queryClient;
 
     [HttpGet(Name = "GetWeatherForecast")]
     public async Task<QueryResult<WeatherForecast[]>> Get()

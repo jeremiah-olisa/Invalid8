@@ -3,7 +3,7 @@ using Invalid8.MediatR.Extensions;
 using Invalid8.Core.Extensions;
 using Invalid8.Samples.WebApi;
 using Invalid8.SignalR.Extensions;
-using Invalid8.SignalR.Interfaces;
+using Invalid8.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +23,18 @@ builder.Services.AddInvalid8();
 // Manual subscription to cache invalidation events
 builder.Services.AddHostedService<CacheInvalidationSubscriber>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyHeader()
+              .AllowAnyMethod()
+              .SetIsOriginAllowed(_ => true)
+              .AllowCredentials();
+    });
+});
+
+
 var app = builder.Build();
 
 
@@ -35,11 +47,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("AllowAll");
 
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<IInvalid8Hub>("/invalid8Hub");
+app.MapHub<Invalid8Hub>("/invalid8-hub");
 
 
 app.Run();
