@@ -8,7 +8,6 @@
 
     <PropertyGroup>
         <PackageId>Invalid8.Core</PackageId>
-        <Version>$(Invalid8Version)</Version>
         <Description>Core abstractions and interfaces for the Invalid8 caching library. Contains caching contracts, event models, and provider interfaces.</Description>
         <PackageTags>caching;abstractions;interfaces;net8.0;distributed-cache</PackageTags>
         <IsPackable>true</IsPackable>

@@ -12,7 +12,6 @@
 
     <PropertyGroup>
         <PackageId>Invalid8</PackageId>
-        <Version>$(Invalid8Version)</Version>
         <Description>A sophisticated caching library for .NET applications with React Query-like developer experience. Provides intelligent query caching, automatic cache invalidation, distributed cache synchronization, and production-ready resilience patterns.</Description>
         <PackageTags>caching;distributed-cache;react-query;net8.0;cqrs;performance;resilience</PackageTags>
         <IsPackable>true</IsPackable>

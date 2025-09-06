@@ -1,7 +1,6 @@
 <Project>
     <PropertyGroup>
         <!-- Central package version management -->
-        <Invalid8Version>1.0.2</Invalid8Version>
         <Authors>Jeremiah The Predator</Authors>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/jeremiah-olisa/Invalid8</PackageProjectUrl>
@@ -11,5 +10,10 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
 </Project>

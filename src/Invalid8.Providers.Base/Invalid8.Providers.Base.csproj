@@ -12,7 +12,6 @@
 
     <PropertyGroup>
         <PackageId>Invalid8.Providers.Base</PackageId>
-        <Version>$(Invalid8Version)</Version>
         <Description>Base provider implementations and reusable components for Invalid8 caching library. Contains abstract base classes for cache and event providers.</Description>
         <PackageTags>caching;providers;base;abstract;net8.0</PackageTags>
         <IsPackable>true</IsPackable>

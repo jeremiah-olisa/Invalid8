@@ -8,7 +8,6 @@
 
     <PropertyGroup>
         <PackageId>Invalid8.Providers.Cache.Redis</PackageId>
-        <Version>$(Invalid8Version)</Version>
         <Description>Redis cache provider implementation for Invalid8 caching library. Provides distributed caching using StackExchange.Redis.</Description>
         <PackageTags>caching;redis;distributed-cache;stackexchange;net8.0</PackageTags>
         <IsPackable>true</IsPackable>
