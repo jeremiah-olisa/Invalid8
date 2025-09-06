@@ -10,10 +10,8 @@ permissions:
   contents: write
 
 jobs:
-  setup:
+  publish:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
 
     steps:
       - uses: actions/checkout@v4
@@ -32,13 +30,6 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "✔ Version = $VERSION"
 
-  build:
-    runs-on: ubuntu-latest
-    needs: setup
-
-    steps:
-      - uses: actions/checkout@v4
-
       - name: Setup .NET (8.0 and 9.0)
         uses: actions/setup-dotnet@v4
         with:
@@ -52,42 +43,11 @@ jobs:
       - name: Build project
         run: dotnet build --configuration Release --no-restore
 
-  test:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            8.0.x
-            9.0.x
-
-      - name: Restore dependencies
-        run: dotnet restore
-
       - name: Run tests
         run: dotnet test --configuration Release --verbosity normal --logger "console;verbosity=detailed"
-    
-  publish:
-    runs-on: ubuntu-latest
-    needs: [setup, test] # <-- requires tests to succeed
-    if: success()        # <-- blocks if tests fail
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET (8.0 and 9.0)
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            8.0.x
-            9.0.x
 
       - name: Pack project
-        run: dotnet pack --configuration Release --no-build --output ./nupkgs /p:Version=${{ needs.setup.outputs.version }}
+        run: dotnet pack --configuration Release --no-build --output ./nupkgs /p:Version=${{ steps.version.outputs.version }}
 
       - name: Publish to NuGet.org
         run: |
@@ -105,20 +65,8 @@ jobs:
           name: nuget-packages
           path: ./nupkgs/*.nupkg
 
-  release:
-    runs-on: ubuntu-latest
-    needs: publish
-
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: nuget-packages
-          path: ./nupkgs
-
-      - name: List packages
-        run: ls -la ./nupkgs
-
-      - uses: softprops/action-gh-release@v1
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
           files: ./nupkgs/*.nupkg
           generate_release_notes: true
