@@ -1,7 +1,7 @@
 <Project>
     <PropertyGroup>
         <!-- Central package version management -->
-        <Invalid8Version>1.0.0</Invalid8Version>
+        <Invalid8Version>1.0.0.preview</Invalid8Version>
         <Authors>Jeremiah The Predator</Authors>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/jeremiah-olisa/Invalid8</PackageProjectUrl>
