@@ -407,9 +407,9 @@ var result = await _queryClient.MutateAsync(
 
 ## Support
 
-- **Documentation**: [GitHub Wiki](https://github.com/your-username/Invalid8/wiki)
-- **Issues**: [GitHub Issues](https://github.com/your-username/Invalid8/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/Invalid8/discussions)
+- **Documentation**: [GitHub Wiki](https://github.com/jeremiah-olisa/Invalid8/wiki)
+- **Issues**: [GitHub Issues](https://github.com/jeremiah-olisa/Invalid8/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/jeremiah-olisa/Invalid8/discussions)
 
 ## License
 
